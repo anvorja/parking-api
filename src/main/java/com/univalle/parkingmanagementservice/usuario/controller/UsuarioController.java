@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.univalle.parkingmanagementservice.usuario.dto.CrearUsuarioRequest;
 import com.univalle.parkingmanagementservice.usuario.dto.CrearUsuarioResponse;
+import com.univalle.parkingmanagementservice.usuario.dto.EditarUsuarioRequest;
 import com.univalle.parkingmanagementservice.usuario.dto.UsuarioListItemResponse;
 import com.univalle.parkingmanagementservice.usuario.service.UsuarioService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,10 +32,21 @@ public class UsuarioController {
     }
 
     @PostMapping
+    @Operation(summary = "Crear usuario", description = "Crea nuevos usuarios")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('ROLE_ADMINISTRADOR')")
     public CrearUsuarioResponse crearUsuario(@Valid @RequestBody CrearUsuarioRequest request) {
         UsuarioListItemResponse usuario = usuarioService.crearUsuario(request);
         return new CrearUsuarioResponse("Usuario creado correctamente", usuario);
+    }
+
+    @PutMapping("/{idUsuario}")
+    @Operation(summary = "Actualizar usuario", description = "Actualizar losa datos de un usuarios")
+    @PreAuthorize("hasRole('ROLE_ADMINISTRADOR')")
+    public UsuarioListItemResponse editarUsuario(
+            @PathVariable Long idUsuario,
+            @Valid @RequestBody EditarUsuarioRequest request
+    ) {
+        return usuarioService.editarUsuario(idUsuario, request);
     }
 }

@@ -6,6 +6,7 @@ import com.univalle.parkingmanagementservice.auth.repositories.EstadoUsuarioRepo
 import com.univalle.parkingmanagementservice.auth.repositories.RolRepository;
 import com.univalle.parkingmanagementservice.auth.repositories.UsuarioRepository;
 import com.univalle.parkingmanagementservice.usuario.dto.CrearUsuarioRequest;
+import com.univalle.parkingmanagementservice.usuario.dto.EditarUsuarioRequest;
 import com.univalle.parkingmanagementservice.usuario.dto.UsuarioListItemResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,7 +43,9 @@ class UsuarioServiceImplTest {
 
     private CrearUsuarioRequest request;
     private Rol rolAuxiliar;
+    private Rol rolAdministrador;
     private EstadoUsuario estadoActivo;
+    private Usuario usuarioExistente;
 
     @BeforeEach
     void setUp() {
@@ -57,9 +61,21 @@ class UsuarioServiceImplTest {
         rolAuxiliar.setId(2L);
         rolAuxiliar.setNombre("AUXILIAR");
 
+        rolAdministrador = new Rol();
+        rolAdministrador.setId(1L);
+        rolAdministrador.setNombre("ADMINISTRADOR");
+
         estadoActivo = new EstadoUsuario();
         estadoActivo.setId(1L);
         estadoActivo.setNombre("ACTIVO");
+
+        usuarioExistente = new Usuario();
+        usuarioExistente.setId(10L);
+        usuarioExistente.setNombreCompleto("Juan Pérez");
+        usuarioExistente.setNombreUsuario("jperez");
+        usuarioExistente.setContrasenaHash("HASH_OLD");
+        usuarioExistente.setRol(rolAuxiliar);
+        usuarioExistente.setFechaCreacion(OffsetDateTime.now());
     }
 
 
@@ -259,5 +275,200 @@ class UsuarioServiceImplTest {
         verify(estadoUsuarioRepository).findByNombre("ACTIVO");
         verify(passwordEncoder, never()).encode(any());
         verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    void deberiaEditarUsuarioSinCambiarContrasena() {
+        EditarUsuarioRequest request = new EditarUsuarioRequest(
+                "Juan Carlos Pérez",
+                "jperez.actualizado",
+                "",
+                "",
+                "ADMINISTRADOR"
+        );
+
+        when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuarioExistente));
+        when(usuarioRepository.existsByNombreUsuario("jperez.actualizado")).thenReturn(false);
+        when(rolRepository.findByNombre("ADMINISTRADOR")).thenReturn(Optional.of(rolAdministrador));
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UsuarioListItemResponse response = usuarioService.editarUsuario(10L, request);
+
+        assertEquals(10L, response.id());
+        assertEquals("Juan Carlos Pérez", response.nombreCompleto());
+        assertEquals("jperez.actualizado", response.nombreUsuario());
+        assertEquals("ADMINISTRADOR", response.rol());
+
+        assertEquals("HASH_OLD", usuarioExistente.getContrasenaHash());
+        verify(passwordEncoder, never()).encode(any());
+    }
+
+    @Test
+    void deberiaEditarUsuarioYCambiarContrasena() {
+        EditarUsuarioRequest request = new EditarUsuarioRequest(
+                "Juan Carlos Pérez",
+                "jperez",
+                "Nueva123*",
+                "Nueva123*",
+                "AUXILIAR"
+        );
+
+        when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuarioExistente));
+        when(rolRepository.findByNombre("AUXILIAR")).thenReturn(Optional.of(rolAuxiliar));
+        when(passwordEncoder.encode("Nueva123*")).thenReturn("HASH_NEW");
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UsuarioListItemResponse response = usuarioService.editarUsuario(10L, request);
+
+        assertEquals("HASH_NEW", usuarioExistente.getContrasenaHash());
+        assertEquals("Juan Carlos Pérez", response.nombreCompleto());
+        assertEquals("jperez", response.nombreUsuario());
+        assertEquals("AUXILIAR", response.rol());
+
+        verify(passwordEncoder).encode("Nueva123*");
+    }
+
+    @Test
+    void deberiaFallarSiUsuarioNoExiste() {
+        EditarUsuarioRequest request = new EditarUsuarioRequest(
+                "Juan Carlos Pérez",
+                "jperez",
+                "",
+                "",
+                "AUXILIAR"
+        );
+
+        when(usuarioRepository.findById(99L)).thenReturn(Optional.empty());
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> usuarioService.editarUsuario(99L, request)
+        );
+
+        assertEquals("El usuario no existe", ex.getMessage());
+    }
+
+    @Test
+    void deberiaFallarSiNuevoUsernameYaExiste() {
+        EditarUsuarioRequest request = new EditarUsuarioRequest(
+                "Juan Carlos Pérez",
+                "usuario.duplicado",
+                "",
+                "",
+                "AUXILIAR"
+        );
+
+        when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuarioExistente));
+        when(usuarioRepository.existsByNombreUsuario("usuario.duplicado")).thenReturn(true);
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> usuarioService.editarUsuario(10L, request)
+        );
+
+        assertEquals("Ya existe un usuario con ese nombre de usuario", ex.getMessage());
+    }
+
+    @Test
+    void deberiaPermitirEditarSiUsernameEsElMismoActual() {
+        EditarUsuarioRequest request = new EditarUsuarioRequest(
+                "Juan Actualizado",
+                "jperez",
+                "",
+                "",
+                "AUXILIAR"
+        );
+
+        when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuarioExistente));
+        when(rolRepository.findByNombre("AUXILIAR")).thenReturn(Optional.of(rolAuxiliar));
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UsuarioListItemResponse response = usuarioService.editarUsuario(10L, request);
+
+        assertEquals("Juan Actualizado", response.nombreCompleto());
+        verify(usuarioRepository, never()).existsByNombreUsuario(any());
+    }
+
+    @Test
+    void deberiaFallarSiRolNoEsPermitido() {
+        EditarUsuarioRequest request = new EditarUsuarioRequest(
+                "Juan Actualizado",
+                "jperez",
+                "",
+                "",
+                "SUPERVISOR"
+        );
+
+        when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuarioExistente));
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> usuarioService.editarUsuario(10L, request)
+        );
+
+        assertEquals("El rol debe ser ADMINISTRADOR o AUXILIAR", ex.getMessage());
+    }
+
+    @Test
+    void deberiaFallarSiRolNoExisteEnBD() {
+        EditarUsuarioRequest request = new EditarUsuarioRequest(
+                "Juan Actualizado",
+                "jperez",
+                "",
+                "",
+                "ADMINISTRADOR"
+        );
+
+        when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuarioExistente));
+        when(rolRepository.findByNombre("ADMINISTRADOR")).thenReturn(Optional.empty());
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> usuarioService.editarUsuario(10L, request)
+        );
+
+        assertEquals("El rol indicado no existe en el sistema", ex.getMessage());
+    }
+
+    @Test
+    void deberiaFallarSiSoloSeInformaUnaContrasena() {
+        EditarUsuarioRequest request = new EditarUsuarioRequest(
+                "Juan Actualizado",
+                "jperez",
+                "Nueva123*",
+                "",
+                "AUXILIAR"
+        );
+
+        when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuarioExistente));
+        when(rolRepository.findByNombre("AUXILIAR")).thenReturn(Optional.of(rolAuxiliar));
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> usuarioService.editarUsuario(10L, request)
+        );
+
+        assertEquals("La contraseña y su confirmación son obligatorias cuando se desea cambiar la contraseña", ex.getMessage());
+    }
+
+    @Test
+    void deberiaFallarSiContrasenasNoCoinciden() {
+        EditarUsuarioRequest request = new EditarUsuarioRequest(
+                "Juan Actualizado",
+                "jperez",
+                "Nueva123*",
+                "Otra123*",
+                "AUXILIAR"
+        );
+
+        when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuarioExistente));
+        when(rolRepository.findByNombre("AUXILIAR")).thenReturn(Optional.of(rolAuxiliar));
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> usuarioService.editarUsuario(10L, request)
+        );
+
+        assertEquals("La contraseña y su confirmación no coinciden", ex.getMessage());
     }
 }
