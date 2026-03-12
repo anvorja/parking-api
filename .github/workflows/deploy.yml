@@ -37,7 +37,13 @@ jobs:
             ${{ runner.os }}-maven-
 
       # ─────────────────────────────────────────────
-      # 4. Build del proyecto (sin tests para agilizar CI)
+      # 4a. Dar permisos al wrapper de Maven
+      # ─────────────────────────────────────────────
+      - name: Permisos mvnw
+        run: chmod +x mvnw
+
+      # ─────────────────────────────────────────────
+      # 4b. Build del proyecto (sin tests para agilizar CI)
       # ─────────────────────────────────────────────
       - name: Build con Maven
         run: ./mvnw clean package -DskipTests
