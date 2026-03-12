@@ -25,7 +25,7 @@ public class OpenApiConfig {
                                 .name("Equipo Pro Dev")
                                 .email("xxx@univalle.com"))
                         .license(new License()
-                                .name("Uso interno")))
+                                .name("Uso interno developers")))
                 .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
                 .schemaRequirement(securitySchemeName, new SecurityScheme()
                         .name(securitySchemeName)
