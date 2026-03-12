@@ -90,7 +90,6 @@ jobs:
       #     Eliminar este step si usas Railway.
       # ─────────────────────────────────────────────
       - name: Trigger redeploy en Render
-        if: ${{ secrets.RENDER_API_KEY != '' && secrets.RENDER_SERVICE_ID != '' }}
         run: |
           curl -X POST \
             "https://api.render.com/deploy/${{ secrets.RENDER_SERVICE_ID }}" \
@@ -106,7 +105,6 @@ jobs:
       #     y eliminar el step de Render.
       # ─────────────────────────────────────────────
       # - name: Deploy en Railway
-      #   if: ${{ secrets.RAILWAY_TOKEN != '' }}
       #   run: |
       #     npm i -g @railway/cli
       #     railway up --service parking-api
