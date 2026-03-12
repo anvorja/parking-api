@@ -119,3 +119,4 @@ jobs:
           echo "Deploy completado"
           echo "Imagen: anborja/parking-api:latest"
           echo "Tag commit: anborja/parking-api:${{ steps.vars.outputs.SHORT_SHA }}"
+
