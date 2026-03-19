@@ -1,0 +1,197 @@
+package com.coding.parkingmanagementservice.usuario.service.serviceImpl;
+
+import java.time.OffsetDateTime;
+import java.util.Comparator;
+import java.util.List;
+
+import com.coding.parkingmanagementservice.auth.entities.EstadoUsuario;
+import com.coding.parkingmanagementservice.auth.entities.Rol;
+import com.coding.parkingmanagementservice.auth.entities.Usuario;
+import com.coding.parkingmanagementservice.auth.repositories.EstadoUsuarioRepository;
+import com.coding.parkingmanagementservice.auth.repositories.RolRepository;
+import com.coding.parkingmanagementservice.auth.repositories.UsuarioRepository;
+import com.coding.parkingmanagementservice.shared.exception.BusinessException;
+import com.coding.parkingmanagementservice.shared.exception.ErrorCode;
+import com.coding.parkingmanagementservice.usuario.dto.CrearUsuarioRequest;
+import com.coding.parkingmanagementservice.usuario.dto.EditarUsuarioRequest;
+import com.coding.parkingmanagementservice.usuario.dto.UsuarioListItemResponse;
+import com.coding.parkingmanagementservice.usuario.service.UsuarioService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class UsuarioServiceImpl implements UsuarioService {
+
+    private static final String ROL_ADMINISTRADOR = "ADMINISTRADOR";
+    private static final String ROL_AUXILIAR = "AUXILIAR";
+
+    private final UsuarioRepository usuarioRepository;
+    private final RolRepository rolRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final EstadoUsuarioRepository estadoUsuarioRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UsuarioListItemResponse> listarUsuarios() {
+        return usuarioRepository.findAll()
+                .stream()
+                .sorted(Comparator.comparing(Usuario::getNombreCompleto, String.CASE_INSENSITIVE_ORDER))
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public UsuarioListItemResponse crearUsuario(CrearUsuarioRequest request) {
+        validarContrasenas(request.contrasena(), request.confirmacionContrasena());
+
+        String nombreUsuarioNormalizado = request.nombreUsuario().trim();
+        validarUsuarioNoExiste(nombreUsuarioNormalizado);
+
+        String nombreRolNormalizado = request.rol().trim().toUpperCase();
+        validarRolPermitido(nombreRolNormalizado);
+
+        Rol rol = rolRepository.findByNombre(nombreRolNormalizado)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ROL_NO_ENCONTRADO,"El rol indicado no existe en el sistema", HttpStatus.OK));
+
+        EstadoUsuario estadoActivo = estadoUsuarioRepository.findByNombre("ACTIVO")
+                .orElseThrow(() -> new BusinessException(ErrorCode.ESTADO_USUARIO_NO_ENCONTRADO,"No existe el estado de usuario ACTIVO", HttpStatus.OK));
+
+        Usuario usuario = new Usuario();
+        usuario.setNombreCompleto(request.nombreCompleto().trim());
+        usuario.setNombreUsuario(nombreUsuarioNormalizado);
+        usuario.setContrasenaHash(passwordEncoder.encode(request.contrasena()));
+        usuario.setRol(rol);
+        usuario.setEstadoUsuario(estadoActivo);
+        usuario.setFechaCreacion(OffsetDateTime.now());
+
+        Usuario usuarioGuardado = usuarioRepository.save(usuario);
+
+        return new UsuarioListItemResponse(
+                usuarioGuardado.getId(),
+                usuarioGuardado.getNombreCompleto(),
+                usuarioGuardado.getNombreUsuario(),
+                usuarioGuardado.getRol().getNombre()
+        );
+    }
+
+    @Override
+    @Transactional
+    public UsuarioListItemResponse editarUsuario(Long idUsuario, EditarUsuarioRequest request) {
+        Usuario usuario = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USUARIO_AUTENTICADO_NO_ENCONTRADO,"El usuario no existe", HttpStatus.OK));
+
+        String nombreCompletoNormalizado = request.nombreCompleto().trim();
+        String nombreUsuarioNormalizado = request.nombreUsuario().trim();
+        String nombreRolNormalizado = request.rol().trim().toUpperCase();
+
+        validarRolPermitido(nombreRolNormalizado);
+        validarNombreUsuarioDisponibleParaEdicion(nombreUsuarioNormalizado, usuario);
+
+        Rol rol = rolRepository.findByNombre(nombreRolNormalizado)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ROL_NO_ENCONTRADO,"El rol indicado no existe en el sistema", HttpStatus.OK));
+
+        usuario.setNombreCompleto(nombreCompletoNormalizado);
+        usuario.setNombreUsuario(nombreUsuarioNormalizado);
+        usuario.setRol(rol);
+
+        actualizarContrasenaSiAplica(usuario, request.contrasena(), request.confirmacionContrasena());
+
+        Usuario usuarioActualizado = usuarioRepository.save(usuario);
+
+        return new UsuarioListItemResponse(
+                usuarioActualizado.getId(),
+                usuarioActualizado.getNombreCompleto(),
+                usuarioActualizado.getNombreUsuario(),
+                usuarioActualizado.getRol().getNombre()
+        );
+    }
+    @Override
+    @Transactional
+    public void eliminarUsuario(Long idUsuario) {
+        Usuario usuarioAEliminar = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USUARIO_AUTENTICADO_NO_ENCONTRADO,"El usuario no existe", HttpStatus.OK));
+
+        String usernameAutenticado = obtenerUsernameAutenticado();
+
+        if (usuarioAEliminar.getNombreUsuario().equals(usernameAutenticado)) {
+
+            throw new BusinessException(ErrorCode.ACCION_NO_PERMITIDA,"No puedes eliminar tu propio usuario", HttpStatus.OK);
+        }
+
+        usuarioRepository.delete(usuarioAEliminar);
+    }
+
+    private String obtenerUsernameAutenticado() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication.getName();
+    }
+
+    private UsuarioListItemResponse toResponse(Usuario usuario) {
+        return new UsuarioListItemResponse(
+                usuario.getId(),
+                usuario.getNombreCompleto(),
+                usuario.getNombreUsuario(),
+                usuario.getRol().getNombre()
+        );
+    }
+
+    private void validarContrasenas(String contrasena, String confirmacionContrasena) {
+        if (!contrasena.equals(confirmacionContrasena)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,"La contraseña y su confirmación no coinciden", HttpStatus.OK);
+        }
+    }
+
+    private void validarUsuarioNoExiste(String nombreUsuario) {
+        if (usuarioRepository.existsByNombreUsuario(nombreUsuario)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,"Ya existe un usuario con ese nombre de usuario", HttpStatus.OK);
+        }
+    }
+
+    private void validarRolPermitido(String rol) {
+        if (!ROL_ADMINISTRADOR.equals(rol) && !ROL_AUXILIAR.equals(rol)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,"El rol debe ser ADMINISTRADOR o AUXILIAR", HttpStatus.OK);
+        }
+    }
+
+    private void validarNombreUsuarioDisponibleParaEdicion(String nombreUsuarioNuevo, Usuario usuarioActual) {
+        boolean mismoUsuario = usuarioActual.getNombreUsuario().equals(nombreUsuarioNuevo);
+        if (mismoUsuario) {
+            return;
+        }
+
+        if (usuarioRepository.existsByNombreUsuario(nombreUsuarioNuevo)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,"Ya existe un usuario con ese nombre de usuario", HttpStatus.OK);
+        }
+    }
+
+    private void actualizarContrasenaSiAplica(
+            Usuario usuario,
+            String contrasena,
+            String confirmacionContrasena
+    ) {
+        boolean contrasenaVacia = contrasena == null || contrasena.isBlank();
+        boolean confirmacionVacia = confirmacionContrasena == null || confirmacionContrasena.isBlank();
+
+        if (contrasenaVacia && confirmacionVacia) {
+            return;
+        }
+
+        if (contrasenaVacia || confirmacionVacia) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,"La contraseña y su confirmación son obligatorias cuando se desea cambiar la contraseña", HttpStatus.OK);
+        }
+
+        if (!contrasena.equals(confirmacionContrasena)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,"La contraseña y su confirmación no coinciden", HttpStatus.OK);
+        }
+
+        usuario.setContrasenaHash(passwordEncoder.encode(contrasena));
+    }
+
+}

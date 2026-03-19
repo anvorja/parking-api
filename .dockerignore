@@ -1,0 +1,23 @@
+# Git
+.git
+.gitignore
+
+# Entornos y secretos locales
+.env
+.env.*
+
+# Directorios de build (Maven en tu caso)
+target/
+!target/*.jar
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+.mvn/
+mvnw
+mvnw.cmd
+
+# Otros
+*.log
+
