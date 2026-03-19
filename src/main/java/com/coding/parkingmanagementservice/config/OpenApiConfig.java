@@ -65,15 +65,9 @@ public class OpenApiConfig {
                         - **401 Unauthorized** — Token ausente, inválido o expirado.
                         - **403 Forbidden** — Token válido pero sin permisos suficientes.
                         - **404 Not Found** — Recurso no encontrado.
-                        - **409 Conflict** — Conflicto de unicidad (ej. username duplicado).
+                        - **409 Conflict** — Conflicto de unicidad.
                         """)
-                .version("v1.0")
-                .contact(new Contact()
-                        .name("Equipo Pro Dev — Universidad del Valle")
-                        .email("prodev@univalle.edu.co"))
-                .license(new License()
-                        .name("Uso interno — Universidad del Valle")
-                        .url("https://www.univalle.edu.co"));
+                .version("v1.0");
     }
 
     // ---------------------------------------------------------------------------
