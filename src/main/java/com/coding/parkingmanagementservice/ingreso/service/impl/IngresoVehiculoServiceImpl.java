@@ -32,6 +32,7 @@ public class IngresoVehiculoServiceImpl implements IngresoVehiculoService {
     private static final String ESTADO_INGRESADO                 = "INGRESADO";
     private static final String ESTADO_ENTREGADO                 = "ENTREGADO";
     private static final String ESTADO_DISPONIBLE                = "DISPONIBLE";
+    private static final String ESTADO_OCUPADO                   = "OCUPADO";
     private static final String UNIDAD_HORA                      = "HORA";
     private static final String TIPO_CARRO                       = "CARRO";
     private static final String TIPO_MOTO                        = "MOTO";
@@ -91,6 +92,35 @@ public class IngresoVehiculoServiceImpl implements IngresoVehiculoService {
         ingreso.setFechaHoraIngreso(fechaIngreso);
         ingreso.setUsuarioRegistro(usuarioRegistro);
         ingreso.setFechaCreacion(OffsetDateTime.now());
+
+        // ── ACTUALIZAR ESTADO UBICACION A OCUPADO SI SE LLENA ──
+        int activosActuales = ingresoVehiculoRepository.contarActivosPorUbicacion(ubicacion.getId());
+        int activosNuevos = activosActuales + 1;
+        boolean seLlena = false;
+        
+        String tipoNativo = ubicacion.getTipoVehiculoNativo().getNombre().toUpperCase(Locale.ROOT);
+        String tipoIng = tipoVehiculo.getNombre().toUpperCase(Locale.ROOT);
+
+        if (TIPO_MOTO.equals(tipoNativo) && TIPO_MOTO.equals(tipoIng)) {
+            seLlena = (activosNuevos >= ubicacion.getCapacidad());
+        } else if (TIPO_CARRO.equals(tipoNativo)) {
+            if (TIPO_CARRO.equals(tipoIng)) {
+                seLlena = (activosNuevos >= ubicacion.getCapacidad());
+            } else if (TIPO_MOTO.equals(tipoIng)) {
+                seLlena = (activosNuevos >= CAPACIDAD_MOTOS_EN_ESPACIO_CARRO);
+            }
+        }
+        
+        if (seLlena) {
+            EstadoUbicacion estadoOcupado = estadoUbicacionRepository
+                    .findByNombre(ESTADO_OCUPADO)
+                    .orElseThrow(() -> new BusinessException(
+                            ErrorCode.UBICACION_NO_ENCONTRADA,
+                            "No existe el estado de ubicación OCUPADO",
+                            HttpStatus.INTERNAL_SERVER_ERROR));
+            ubicacion.setEstadoUbicacion(estadoOcupado);
+            ubicacionRepository.save(ubicacion);
+        }
 
         return toResponse(ingresoVehiculoRepository.save(ingreso));
     }
@@ -340,13 +370,26 @@ public class IngresoVehiculoServiceImpl implements IngresoVehiculoService {
 
         // 8 — Liberar la ubicación
         Ubicacion ubicacion = ingreso.getUbicacion();
-        // Solo se libera si ya no quedan ingresos activos en esa ubicación
         int activosRestantes = ingresoVehiculoRepository.contarActivosPorUbicacion(ubicacion.getId());
-        // contarActivosPorUbicacion usa fechaHoraSalida IS NULL, pero ya seteamos la salida en memoria.
-        // Flush implícito antes del count no ocurre hasta el commit, así que ajustamos manualmente:
-        // el ingreso actual ya tiene salida → activosRestantes - 1 no aplica porque el save no ocurrió aún.
-        // Por eso usamos activosRestantes <= 1 (este es el que acabamos de cerrar + posibles otros)
-        if (activosRestantes <= 1) {
+        // El conteo no ha considerado aún este registro porque no se le ha dado 'commit' a la fechaHoraSalida
+        // Por lo tanto la cantidad real final de activos será: activosRestantes - 1
+        int activosRealesAlFinal = activosRestantes - 1;
+
+        boolean ubicacionQuedaDisponible = false;
+        String tipoNativo = ubicacion.getTipoVehiculoNativo().getNombre().toUpperCase(Locale.ROOT);
+
+        if (TIPO_MOTO.equals(tipoNativo) || TIPO_CARRO.equals(tipoNativo)) {
+            // Como las motos entran 4 en un carro, basta con que el total sea menor que el max. absoluto
+            int capacidadMax = (TIPO_CARRO.equals(tipoNativo) && "MOTO".equalsIgnoreCase(ingreso.getTipoVehiculo().getNombre()))
+                    ? CAPACIDAD_MOTOS_EN_ESPACIO_CARRO
+                    : ubicacion.getCapacidad();
+
+            if (activosRealesAlFinal < capacidadMax) {
+                ubicacionQuedaDisponible = true;
+            }
+        }
+
+        if (ubicacionQuedaDisponible) {
             ubicacion.setEstadoUbicacion(estadoDisponible);
             ubicacionRepository.save(ubicacion);
         }
