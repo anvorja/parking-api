@@ -58,10 +58,10 @@ public class UsuarioServiceImpl implements UsuarioService {
         validarRolPermitido(nombreRolNormalizado);
 
         Rol rol = rolRepository.findByNombre(nombreRolNormalizado)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ROL_NO_ENCONTRADO,"El rol indicado no existe en el sistema", HttpStatus.OK));
+                .orElseThrow(() -> new BusinessException(ErrorCode.ROL_NO_ENCONTRADO,"El rol indicado no existe en el sistema", HttpStatus.BAD_REQUEST));
 
         EstadoUsuario estadoActivo = estadoUsuarioRepository.findByNombre("ACTIVO")
-                .orElseThrow(() -> new BusinessException(ErrorCode.ESTADO_USUARIO_NO_ENCONTRADO,"No existe el estado de usuario ACTIVO", HttpStatus.OK));
+                .orElseThrow(() -> new BusinessException(ErrorCode.ESTADO_USUARIO_NO_ENCONTRADO,"No existe el estado de usuario ACTIVO", HttpStatus.BAD_REQUEST));
 
         Usuario usuario = new Usuario();
         usuario.setNombreCompleto(request.nombreCompleto().trim());
@@ -85,7 +85,7 @@ public class UsuarioServiceImpl implements UsuarioService {
     @Transactional
     public UsuarioListItemResponse editarUsuario(Long idUsuario, EditarUsuarioRequest request) {
         Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USUARIO_AUTENTICADO_NO_ENCONTRADO,"El usuario no existe", HttpStatus.OK));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USUARIO_AUTENTICADO_NO_ENCONTRADO,"El usuario no existe", HttpStatus.NOT_FOUND));
 
         String nombreCompletoNormalizado = request.nombreCompleto().trim();
         String nombreUsuarioNormalizado = request.nombreUsuario().trim();
@@ -95,7 +95,7 @@ public class UsuarioServiceImpl implements UsuarioService {
         validarNombreUsuarioDisponibleParaEdicion(nombreUsuarioNormalizado, usuario);
 
         Rol rol = rolRepository.findByNombre(nombreRolNormalizado)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ROL_NO_ENCONTRADO,"El rol indicado no existe en el sistema", HttpStatus.OK));
+                .orElseThrow(() -> new BusinessException(ErrorCode.ROL_NO_ENCONTRADO,"El rol indicado no existe en el sistema", HttpStatus.BAD_REQUEST));
 
         usuario.setNombreCompleto(nombreCompletoNormalizado);
         usuario.setNombreUsuario(nombreUsuarioNormalizado);
@@ -116,13 +116,16 @@ public class UsuarioServiceImpl implements UsuarioService {
     @Transactional
     public void eliminarUsuario(Long idUsuario) {
         Usuario usuarioAEliminar = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USUARIO_AUTENTICADO_NO_ENCONTRADO,"El usuario no existe", HttpStatus.OK));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USUARIO_AUTENTICADO_NO_ENCONTRADO,"El usuario no existe", HttpStatus.NOT_FOUND));
+
+        if ("admin".equalsIgnoreCase(usuarioAEliminar.getNombreUsuario())) {
+            throw new BusinessException(ErrorCode.ACCION_NO_PERMITIDA,"No puedes eliminar el usuario administrador por defecto", HttpStatus.BAD_REQUEST);
+        }
 
         String usernameAutenticado = obtenerUsernameAutenticado();
 
         if (usuarioAEliminar.getNombreUsuario().equals(usernameAutenticado)) {
-
-            throw new BusinessException(ErrorCode.ACCION_NO_PERMITIDA,"No puedes eliminar tu propio usuario", HttpStatus.OK);
+            throw new BusinessException(ErrorCode.ACCION_NO_PERMITIDA,"No puedes eliminar tu propio usuario", HttpStatus.BAD_REQUEST);
         }
 
         usuarioRepository.delete(usuarioAEliminar);
@@ -144,19 +147,19 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     private void validarContrasenas(String contrasena, String confirmacionContrasena) {
         if (!contrasena.equals(confirmacionContrasena)) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR,"La contraseña y su confirmación no coinciden", HttpStatus.OK);
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,"La contraseña y su confirmación no coinciden", HttpStatus.BAD_REQUEST);
         }
     }
 
     private void validarUsuarioNoExiste(String nombreUsuario) {
         if (usuarioRepository.existsByNombreUsuario(nombreUsuario)) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR,"Ya existe un usuario con ese nombre de usuario", HttpStatus.OK);
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,"Ya existe un usuario con ese nombre de usuario", HttpStatus.BAD_REQUEST);
         }
     }
 
     private void validarRolPermitido(String rol) {
         if (!ROL_ADMINISTRADOR.equals(rol) && !ROL_AUXILIAR.equals(rol)) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR,"El rol debe ser ADMINISTRADOR o AUXILIAR", HttpStatus.OK);
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,"El rol debe ser ADMINISTRADOR o AUXILIAR", HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -167,7 +170,7 @@ public class UsuarioServiceImpl implements UsuarioService {
         }
 
         if (usuarioRepository.existsByNombreUsuario(nombreUsuarioNuevo)) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR,"Ya existe un usuario con ese nombre de usuario", HttpStatus.OK);
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,"Ya existe un usuario con ese nombre de usuario", HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -184,11 +187,11 @@ public class UsuarioServiceImpl implements UsuarioService {
         }
 
         if (contrasenaVacia || confirmacionVacia) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR,"La contraseña y su confirmación son obligatorias cuando se desea cambiar la contraseña", HttpStatus.OK);
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,"La contraseña y su confirmación son obligatorias cuando se desea cambiar la contraseña", HttpStatus.BAD_REQUEST);
         }
 
         if (!contrasena.equals(confirmacionContrasena)) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR,"La contraseña y su confirmación no coinciden", HttpStatus.OK);
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,"La contraseña y su confirmación no coinciden", HttpStatus.BAD_REQUEST);
         }
 
         usuario.setContrasenaHash(passwordEncoder.encode(contrasena));

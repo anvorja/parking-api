@@ -37,18 +37,18 @@ public interface IngresoVehiculoRepository extends JpaRepository<IngresoVehiculo
             @Param("idTipoVehiculo") Long idTipoVehiculo
     );
 
-    /**
-     * Listado paginado con filtros opcionales.
-     */
     @Query("""
         SELECT i FROM IngresoVehiculo i
         WHERE (:placa IS NULL OR :placa = '' OR UPPER(i.placa) LIKE UPPER(CONCAT('%', :placa, '%')))
           AND (:estado IS NULL OR :estado = '' OR UPPER(i.estadoIngreso.nombre) = UPPER(:estado))
+          AND (CAST(:fechaInicio AS timestamp) IS NULL OR (i.fechaHoraIngreso >= :fechaInicio AND i.fechaHoraIngreso < :fechaFin))
         ORDER BY i.fechaHoraIngreso DESC
     """)
     Page<IngresoVehiculo> listarConFiltros(
             @Param("placa") String placa,
             @Param("estado") String estado,
+            @Param("fechaInicio") java.time.OffsetDateTime fechaInicio,
+            @Param("fechaFin") java.time.OffsetDateTime fechaFin,
             Pageable pageable
     );
 
