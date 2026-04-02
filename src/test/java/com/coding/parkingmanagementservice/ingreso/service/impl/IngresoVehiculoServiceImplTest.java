@@ -68,6 +68,10 @@ class IngresoVehiculoServiceImplTest {
         estadoDisponible.setId(1L);
         estadoDisponible.setNombre("DISPONIBLE");
 
+        EstadoUbicacion estadoOcupado = new EstadoUbicacion();
+        estadoOcupado.setId(2L);
+        estadoOcupado.setNombre("OCUPADO");
+
         ubicacionCarro = new Ubicacion();
         ubicacionCarro.setId(10L);
         ubicacionCarro.setNombre("A01");
@@ -140,6 +144,12 @@ class IngresoVehiculoServiceImplTest {
         when(ingresoVehiculoRepository.contarActivosPorUbicacion(10L)).thenReturn(0);
         when(estadoIngresoRepository.findByNombre("INGRESADO")).thenReturn(Optional.of(estadoIngresado));
         when(usuarioRepository.findByNombreUsuario("admin")).thenReturn(Optional.of(usuario));
+        
+        EstadoUbicacion estadoOcupado = new EstadoUbicacion();
+        estadoOcupado.setId(2L);
+        estadoOcupado.setNombre("OCUPADO");
+        when(estadoUbicacionRepository.findByNombre("OCUPADO")).thenReturn(Optional.of(estadoOcupado));
+        
         mockSaveAsignaId();
 
         IngresoVehiculoResponse response = service.registrarIngreso(request, "admin");
@@ -162,6 +172,12 @@ class IngresoVehiculoServiceImplTest {
         when(ingresoVehiculoRepository.contarActivosPorUbicacion(60L)).thenReturn(0);
         when(estadoIngresoRepository.findByNombre("INGRESADO")).thenReturn(Optional.of(estadoIngresado));
         when(usuarioRepository.findByNombreUsuario("admin")).thenReturn(Optional.of(usuario));
+        
+        EstadoUbicacion estadoOcupado = new EstadoUbicacion();
+        estadoOcupado.setId(2L);
+        estadoOcupado.setNombre("OCUPADO");
+        when(estadoUbicacionRepository.findByNombre("OCUPADO")).thenReturn(Optional.of(estadoOcupado));
+        
         mockSaveAsignaId();
 
         IngresoVehiculoResponse response = service.registrarIngreso(request, "admin");
@@ -201,6 +217,12 @@ class IngresoVehiculoServiceImplTest {
         when(ingresoVehiculoRepository.existeActivoConTipoVehiculo(10L, 1L)).thenReturn(false);
         when(estadoIngresoRepository.findByNombre("INGRESADO")).thenReturn(Optional.of(estadoIngresado));
         when(usuarioRepository.findByNombreUsuario("admin")).thenReturn(Optional.of(usuario));
+        
+        EstadoUbicacion estadoOcupado = new EstadoUbicacion();
+        estadoOcupado.setId(2L);
+        estadoOcupado.setNombre("OCUPADO");
+        when(estadoUbicacionRepository.findByNombre("OCUPADO")).thenReturn(Optional.of(estadoOcupado));
+        
         mockSaveAsignaId();
 
         IngresoVehiculoResponse response = service.registrarIngreso(request, "admin");
@@ -716,11 +738,11 @@ class IngresoVehiculoServiceImplTest {
         );
 
         when(ingresoVehiculoRepository.listarConFiltros(
-                "ABC", "INGRESADO", PageRequest.of(0, 2)))
+                "ABC", "INGRESADO", null, null, PageRequest.of(0, 2)))
                 .thenReturn(pageResult);
 
         IngresoVehiculoPageResponse response =
-                service.listarIngresos("  ABC ", " INGRESADO ", 0, 2);
+                service.listarIngresos("  ABC ", " INGRESADO ", null, 0, 2);
 
         assertNotNull(response);
         assertEquals(2, response.content().size());
@@ -735,7 +757,7 @@ class IngresoVehiculoServiceImplTest {
         assertEquals("INGRESADO", response.content().get(0).estadoIngreso());
 
         verify(ingresoVehiculoRepository)
-                .listarConFiltros("ABC", "INGRESADO", PageRequest.of(0, 2));
+                .listarConFiltros("ABC", "INGRESADO", null, null, PageRequest.of(0, 2));
     }
 
     @Test
@@ -747,11 +769,11 @@ class IngresoVehiculoServiceImplTest {
         );
 
         when(ingresoVehiculoRepository.listarConFiltros(
-                null, null, PageRequest.of(0, 10)))
+                null, null, null, null, PageRequest.of(0, 10)))
                 .thenReturn(pageResult);
 
         IngresoVehiculoPageResponse response =
-                service.listarIngresos("   ", "   ", 0, 10);
+                service.listarIngresos("   ", "   ", "   ", 0, 10);
 
         assertNotNull(response);
         assertTrue(response.content().isEmpty());
@@ -761,7 +783,7 @@ class IngresoVehiculoServiceImplTest {
         assertEquals(0, response.totalPages());
 
         verify(ingresoVehiculoRepository)
-                .listarConFiltros(null, null, PageRequest.of(0, 10));
+                .listarConFiltros(null, null, null, null, PageRequest.of(0, 10));
     }
 
     @Test
@@ -773,11 +795,11 @@ class IngresoVehiculoServiceImplTest {
         );
 
         when(ingresoVehiculoRepository.listarConFiltros(
-                "ZZZ", "ENTREGADO", PageRequest.of(1, 5)))
+                "ZZZ", "ENTREGADO", null, null, PageRequest.of(1, 5)))
                 .thenReturn(pageResult);
 
         IngresoVehiculoPageResponse response =
-                service.listarIngresos("ZZZ", "ENTREGADO", 1, 5);
+                service.listarIngresos("ZZZ", "ENTREGADO", null, 1, 5);
 
         assertNotNull(response);
         assertTrue(response.content().isEmpty());
@@ -787,7 +809,7 @@ class IngresoVehiculoServiceImplTest {
         assertEquals(0, response.totalPages());
 
         verify(ingresoVehiculoRepository)
-                .listarConFiltros("ZZZ", "ENTREGADO", PageRequest.of(1, 5));
+                .listarConFiltros("ZZZ", "ENTREGADO", null, null, PageRequest.of(1, 5));
     }
 
     @Test

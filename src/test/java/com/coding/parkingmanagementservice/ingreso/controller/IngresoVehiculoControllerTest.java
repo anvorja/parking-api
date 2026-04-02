@@ -52,17 +52,18 @@ class IngresoVehiculoControllerTest {
     void listarIngresos_deberiaDelegarConFiltrosYPaginacion() {
         String placa = "ABC123";
         String estado = "ACTIVO";
+        String fecha = null;
         int page = 0;
         int size = 20;
 
         IngresoVehiculoPageResponse expected = mock(IngresoVehiculoPageResponse.class);
-        when(ingresoVehiculoService.listarIngresos(placa, estado, page, size)).thenReturn(expected);
+        when(ingresoVehiculoService.listarIngresos(placa, estado, fecha, page, size)).thenReturn(expected);
 
         IngresoVehiculoPageResponse result =
-                ingresoVehiculoController.listarIngresos(placa, estado, page, size);
+                ingresoVehiculoController.listarIngresos(placa, estado, fecha, page, size);
 
         assertSame(expected, result);
-        verify(ingresoVehiculoService).listarIngresos(placa, estado, page, size);
+        verify(ingresoVehiculoService).listarIngresos(placa, estado, fecha, page, size);
     }
 
     @Test

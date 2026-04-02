@@ -28,20 +28,20 @@ class UbicacionControllerTest {
     private UbicacionController ubicacionController;
 
     @Test
-    void listarActivas_deberiaRetornarListaDeUbicaciones() {
+    void listar_deberiaRetornarTodasLasUbicacionesSiIncluyeInactivas() {
         UbicacionResponse ubicacion1 = mock(UbicacionResponse.class);
         UbicacionResponse ubicacion2 = mock(UbicacionResponse.class);
         List<UbicacionResponse> expected = List.of(ubicacion1, ubicacion2);
 
-        when(ubicacionService.listarActivas()).thenReturn(expected);
+        when(ubicacionService.listarTodas()).thenReturn(expected);
 
-        List<UbicacionResponse> result = ubicacionController.listarActivas();
+        List<UbicacionResponse> result = ubicacionController.listar(true);
 
         assertNotNull(result);
         assertEquals(2, result.size());
         assertSame(expected, result);
 
-        verify(ubicacionService).listarActivas();
+        verify(ubicacionService).listarTodas();
     }
 
     @Test
