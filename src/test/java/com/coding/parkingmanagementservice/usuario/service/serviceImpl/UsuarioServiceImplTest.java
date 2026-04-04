@@ -521,11 +521,11 @@ class UsuarioServiceImplTest {
     void noDeberiaPermitirAutoEliminacion() {
         Usuario usuarioAEliminar = new Usuario();
         usuarioAEliminar.setId(1L);
-        usuarioAEliminar.setNombreUsuario("admin");
+        usuarioAEliminar.setNombreUsuario("operador");
 
         when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioAEliminar));
 
-        Authentication authentication = new UsernamePasswordAuthenticationToken("admin", null);
+        Authentication authentication = new UsernamePasswordAuthenticationToken("operador", null);
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         BusinessException ex = assertThrows(

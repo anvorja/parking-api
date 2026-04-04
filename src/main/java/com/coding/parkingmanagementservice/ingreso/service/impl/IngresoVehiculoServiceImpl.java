@@ -21,9 +21,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -131,13 +135,27 @@ public class IngresoVehiculoServiceImpl implements IngresoVehiculoService {
 
     @Override
     @Transactional(readOnly = true)
-    public IngresoVehiculoPageResponse listarIngresos(String placa, String estado, int page, int size) {
+    public IngresoVehiculoPageResponse listarIngresos(String placa, String estado, String fecha, int page, int size) {
         PageRequest pageable     = PageRequest.of(page, size);
         String      placaFiltro  = (placa  != null && !placa.isBlank())  ? placa.trim()  : null;
         String      estadoFiltro = (estado != null && !estado.isBlank()) ? estado.trim() : null;
+        String      fechaFiltro  = (fecha != null && !fecha.isBlank()) ? fecha.trim() : null;
+
+        OffsetDateTime fechaInicio = null;
+        OffsetDateTime fechaFin = null;
+
+        if (fechaFiltro != null) {
+            try {
+                LocalDate date = LocalDate.parse(fechaFiltro);
+                fechaInicio = OffsetDateTime.of(date, LocalTime.MIN, ZoneOffset.of("-05:00")); // Asignando zona para DB (o usar UTC)
+                fechaFin = fechaInicio.plusDays(1);
+            } catch (Exception e) {
+                throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Formato de fecha inválido", HttpStatus.BAD_REQUEST);
+            }
+        }
 
         Page<IngresoVehiculo> resultado = ingresoVehiculoRepository
-                .listarConFiltros(placaFiltro, estadoFiltro, pageable);
+                .listarConFiltros(placaFiltro, estadoFiltro, fechaInicio, fechaFin, pageable);
 
         List<IngresoVehiculoResponse> content = resultado.getContent()
                 .stream()
@@ -260,8 +278,8 @@ public class IngresoVehiculoServiceImpl implements IngresoVehiculoService {
     @Transactional(readOnly = true)
     public IngresoVehiculoResponse buscarActivoPorPlaca(String placa) {
         String placaNormalizada = normalizarPlaca(placa);
-        IngresoVehiculo ingreso = ingresoVehiculoRepository
-                .findActivoByPlaca(placaNormalizada)
+        List<IngresoVehiculo> activos = ingresoVehiculoRepository.findActivoByPlaca(placaNormalizada);
+        IngresoVehiculo ingreso = activos.stream().findFirst()
                 .orElseThrow(() -> new BusinessException(
                         ErrorCode.INGRESO_NO_ENCONTRADO,
                         "No se encontró un ingreso activo para la placa " + placaNormalizada,

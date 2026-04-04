@@ -42,6 +42,15 @@ public class UbicacionServiceImpl implements UbicacionService {
                 .toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<UbicacionResponse> listarTodas() {
+        return ubicacionRepository.findAllUbicaciones()
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     // ─── HU-012: Crear ────────────────────────────────────────────────────────
 
     @Override
@@ -173,6 +182,36 @@ public class UbicacionServiceImpl implements UbicacionService {
         ubicacion.setEstadoUbicacion(estadoInactivo);
         ubicacionRepository.save(ubicacion);
     }
+
+    // ─── Reactivar ────────────────────────────────────────────────────────────
+
+    @Override
+    @Transactional
+    public void reactivar(Long idUbicacion) {
+        Ubicacion ubicacion = ubicacionRepository.findById(idUbicacion)
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.UBICACION_NO_ENCONTRADA,
+                        "No existe una ubicación con id " + idUbicacion,
+                        HttpStatus.NOT_FOUND));
+
+        if (!ESTADO_INACTIVO.equalsIgnoreCase(ubicacion.getEstadoUbicacion().getNombre())) {
+            throw new BusinessException(
+                    ErrorCode.ACCION_NO_PERMITIDA,
+                    "La ubicación no está inactiva",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        EstadoUbicacion estadoDisponible = estadoUbicacionRepository
+                .findByNombre(ESTADO_DISPONIBLE)
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.UBICACION_NO_ENCONTRADA,
+                        "No existe el estado de ubicación DISPONIBLE",
+                        HttpStatus.INTERNAL_SERVER_ERROR));
+
+        ubicacion.setEstadoUbicacion(estadoDisponible);
+        ubicacionRepository.save(ubicacion);
+    }
+
 
     // ─── Mapper ───────────────────────────────────────────────────────────────
 

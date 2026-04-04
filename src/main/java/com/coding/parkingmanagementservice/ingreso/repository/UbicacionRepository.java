@@ -22,6 +22,16 @@ public interface UbicacionRepository extends JpaRepository<Ubicacion, Long> {
     List<Ubicacion> findAllActivas();
 
     /**
+     * Lista todas las ubicaciones, incluyendo las inactivas.
+     * Usado por el backend para la vista de mantenimiento.
+     */
+    @Query("""
+        SELECT u FROM Ubicacion u
+        ORDER BY u.nombre ASC
+    """)
+    List<Ubicacion> findAllUbicaciones();
+
+    /**
      * Verifica si el nombre ya existe — para validar unicidad al crear o editar.
      * Excluye la propia ubicación al editar.
      */

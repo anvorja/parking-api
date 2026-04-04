@@ -107,12 +107,14 @@ public class IngresoVehiculoController {
             @RequestParam(required = false) String placa,
             @Parameter(description = "Filtra por estado del ingreso. Valores posibles: `ACTIVO`, `FINALIZADO`.", example = "ACTIVO")
             @RequestParam(required = false) String estado,
+            @Parameter(description = "Filtra por fecha exacta de ingreso en formato YYYY-MM-DD", example = "2023-10-25")
+            @RequestParam(required = false) String fecha,
             @Parameter(description = "Número de página (base 0).", example = "0")
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Cantidad de registros por página.", example = "20")
             @RequestParam(defaultValue = "20") int size
     ) {
-        return ingresoVehiculoService.listarIngresos(placa, estado, page, size);
+        return ingresoVehiculoService.listarIngresos(placa, estado, fecha, page, size);
     }
 
     @GetMapping("/{id}")

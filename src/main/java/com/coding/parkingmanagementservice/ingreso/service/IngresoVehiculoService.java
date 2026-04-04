@@ -6,7 +6,7 @@ public interface IngresoVehiculoService {
 
     IngresoVehiculoResponse registrarIngreso(RegistrarIngresoRequest request, String nombreUsuarioAutenticado);
 
-    IngresoVehiculoPageResponse listarIngresos(String placa, String estado, int page, int size);
+    IngresoVehiculoPageResponse listarIngresos(String placa, String estado, String fecha, int page, int size);
 
     void eliminarIngreso(Long idIngreso);
 

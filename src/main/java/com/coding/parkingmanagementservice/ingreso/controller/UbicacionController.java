@@ -42,18 +42,17 @@ public class UbicacionController {
 
     @GetMapping
     @Operation(
-            summary = "Listar ubicaciones activas",
+            summary = "Listar ubicaciones",
             description = """
-                    Retorna todas las ubicaciones con estado activo (DISPONIBLE u OCUPADO).
+                    Retorna las ubicaciones registradas. Si incluirInactivas es false, retorna
+                    solo aquellas con estado activo (DISPONIBLE u OCUPADO). Si es true, retorna todas.
                     Accesible para cualquier usuario autenticado (ADMINISTRADOR u OPERADOR).
-                    Este endpoint es consumido por el servicio de datos de referencia del frontend
-                    para pre-cargar las ubicaciones en caché local (IndexedDB) al momento del login.
                     """
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
-                    description = "Listado de ubicaciones activas obtenido exitosamente.",
+                    description = "Listado de ubicaciones obtenido exitosamente.",
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = UbicacionResponse.class)))
             ),
             @ApiResponse(
@@ -62,7 +61,12 @@ public class UbicacionController {
                     content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
             )
     })
-    public List<UbicacionResponse> listarActivas() {
+    public List<UbicacionResponse> listar(
+            @RequestParam(required = false, defaultValue = "false") boolean incluirInactivas
+    ) {
+        if (incluirInactivas) {
+            return ubicacionService.listarTodas();
+        }
         return ubicacionService.listarActivas();
     }
 
@@ -199,5 +203,39 @@ public class UbicacionController {
     ) {
         ubicacionService.desactivar(id);
         return ResponseEntity.ok(new MensajeResponse("Ubicación desactivada correctamente"));
+    }
+
+    @PutMapping("/{id}/reactivar")
+    @PreAuthorize("hasRole('ROLE_ADMINISTRADOR')")
+    @Operation(
+            summary = "Reactivar ubicación",
+            description = """
+                    Reactiva una ubicación en estado inactivo y la vuelve a estado DISPONIBLE.
+                    Requiere rol ADMINISTRADOR.
+                    """
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Ubicación reactivada exitosamente.",
+                    content = @Content(schema = @Schema(implementation = MensajeResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "La ubicación no está inactiva.",
+                    content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "No existe una ubicación con el identificador proporcionado.",
+                    content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+            )
+    })
+    public ResponseEntity<MensajeResponse> reactivar(
+            @Parameter(description = "Identificador único de la ubicación a reactivar.", required = true, example = "1")
+            @PathVariable Long id
+    ) {
+        ubicacionService.reactivar(id);
+        return ResponseEntity.ok(new MensajeResponse("Ubicación reactivada correctamente"));
     }
 }
