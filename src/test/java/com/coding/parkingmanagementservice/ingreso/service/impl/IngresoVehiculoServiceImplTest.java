@@ -861,7 +861,7 @@ class IngresoVehiculoServiceImplTest {
                 55L, "ABC123", tipoCarro, ubicacionCarro, estadoIngresado);
 
         when(ingresoVehiculoRepository.findActivoByPlaca(placaNormalizadaEsperada))
-                .thenReturn(Optional.of(ingreso));
+                .thenReturn(List.of(ingreso));
 
         // Act
         IngresoVehiculoResponse response = service.buscarActivoPorPlaca(placaEntrada);
@@ -878,7 +878,7 @@ class IngresoVehiculoServiceImplTest {
         String placaNormalizadaEsperada = "ABC123";
 
         when(ingresoVehiculoRepository.findActivoByPlaca(placaNormalizadaEsperada))
-                .thenReturn(Optional.empty());
+                .thenReturn(List.of());
 
         // Act
         BusinessException ex = assertThrows(
