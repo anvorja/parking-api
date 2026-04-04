@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface IngresoVehiculoRepository extends JpaRepository<IngresoVehiculo, Long> {
@@ -67,7 +68,7 @@ public interface IngresoVehiculoRepository extends JpaRepository<IngresoVehiculo
           AND i.fechaHoraSalida IS NULL
         ORDER BY i.fechaHoraIngreso DESC
     """)
-    Optional<IngresoVehiculo> findActivoByPlaca(@Param("placa") String placa);
+    List<IngresoVehiculo> findActivoByPlaca(@Param("placa") String placa);
 
     /**
      * HU-009 — Obtiene un ingreso por id con todas sus asociaciones.

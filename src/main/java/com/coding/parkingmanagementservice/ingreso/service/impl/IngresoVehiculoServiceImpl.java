@@ -27,6 +27,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -277,8 +278,8 @@ public class IngresoVehiculoServiceImpl implements IngresoVehiculoService {
     @Transactional(readOnly = true)
     public IngresoVehiculoResponse buscarActivoPorPlaca(String placa) {
         String placaNormalizada = normalizarPlaca(placa);
-        IngresoVehiculo ingreso = ingresoVehiculoRepository
-                .findActivoByPlaca(placaNormalizada)
+        List<IngresoVehiculo> activos = ingresoVehiculoRepository.findActivoByPlaca(placaNormalizada);
+        IngresoVehiculo ingreso = activos.stream().findFirst()
                 .orElseThrow(() -> new BusinessException(
                         ErrorCode.INGRESO_NO_ENCONTRADO,
                         "No se encontró un ingreso activo para la placa " + placaNormalizada,

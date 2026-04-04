@@ -189,8 +189,52 @@ CREATE TABLE IF NOT EXISTS public.ingreso_vehiculo (
         CHECK (
             fecha_hora_salida IS NULL
             OR fecha_hora_salida >= fecha_hora_ingreso
+        ),
+
+    -- Garantiza que al registrar salida, el registro quede completo
+    CONSTRAINT chk_salida_completa
+        CHECK (
+            fecha_hora_salida IS NULL
+            OR (valor_cobrado IS NOT NULL AND id_usuario_entrega IS NOT NULL)
         )
 );
+
+-- Garantiza a nivel de BD que solo puede existir un ingreso activo por placa.
+-- Un ingreso está activo mientras fecha_hora_salida IS NULL.
+-- Esto hace imposible el duplicado que causaba el 500 en buscarActivoPorPlaca.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_ingreso_placa_activo
+    ON public.ingreso_vehiculo (placa)
+    WHERE fecha_hora_salida IS NULL;
+
+-- =========================
+-- TRIGGER: sincronizar estado_ingreso con fecha_hora_salida
+-- =========================
+-- Garantiza que id_estado_ingreso siempre refleje la realidad:
+--   fecha_hora_salida IS NULL     → INGRESADO
+--   fecha_hora_salida tiene valor → ENTREGADO
+-- Esto elimina la posibilidad de que el estado quede inconsistente
+-- si alguien edita un campo sin actualizar el otro.
+-- =========================
+
+CREATE OR REPLACE FUNCTION public.fn_sync_estado_ingreso()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.fecha_hora_salida IS NOT NULL THEN
+        NEW.id_estado_ingreso := (
+            SELECT id_estado_ingreso FROM public.estado_ingreso WHERE nombre = 'ENTREGADO'
+        );
+    ELSE
+        NEW.id_estado_ingreso := (
+            SELECT id_estado_ingreso FROM public.estado_ingreso WHERE nombre = 'INGRESADO'
+        );
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_sync_estado_ingreso
+BEFORE INSERT OR UPDATE ON public.ingreso_vehiculo
+FOR EACH ROW EXECUTE FUNCTION public.fn_sync_estado_ingreso();
 
 CREATE TABLE IF NOT EXISTS public.ticket (
     id_ticket BIGSERIAL PRIMARY KEY,
