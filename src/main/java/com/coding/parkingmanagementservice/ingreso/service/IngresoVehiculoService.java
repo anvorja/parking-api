@@ -1,6 +1,7 @@
 package com.coding.parkingmanagementservice.ingreso.service;
 
 import com.coding.parkingmanagementservice.ingreso.dto.*;
+import java.util.UUID;
 
 public interface IngresoVehiculoService {
 
@@ -14,6 +15,9 @@ public interface IngresoVehiculoService {
 
     /** HU-009/HU-010 — Obtiene el detalle de un ingreso activo por id (preview antes de confirmar salida) */
     IngresoVehiculoResponse obtenerPorId(Long idIngreso);
+
+    /** HU-009 — Obtiene el detalle de un ingreso por su UUID público (leído del QR del tiquete) */
+    IngresoVehiculoResponse obtenerPorUuid(UUID uuid);
 
     /** HU-010 — Busca el ingreso activo por placa (salida manual) */
     IngresoVehiculoResponse buscarActivoPorPlaca(String placa);

@@ -28,6 +28,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -270,6 +271,17 @@ public class IngresoVehiculoServiceImpl implements IngresoVehiculoService {
         return toResponse(ingreso);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public IngresoVehiculoResponse obtenerPorUuid(UUID uuid) {
+        IngresoVehiculo ingreso = ingresoVehiculoRepository.findByUuidFetchAll(uuid)
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.INGRESO_NO_ENCONTRADO,
+                        "No existe un registro de ingreso con el código QR proporcionado",
+                        HttpStatus.NOT_FOUND));
+        return toResponse(ingreso);
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // HU-010: Buscar ingreso activo por placa (salida manual)
     // ─────────────────────────────────────────────────────────────────────────
@@ -508,6 +520,7 @@ public class IngresoVehiculoServiceImpl implements IngresoVehiculoService {
     private IngresoVehiculoResponse toResponse(IngresoVehiculo i) {
         return new IngresoVehiculoResponse(
                 i.getId(),
+                i.getUuid() != null ? i.getUuid().toString() : null,
                 i.getPlaca(),
                 i.getTipoVehiculo().getId(),
                 i.getTipoVehiculo().getNombre(),
