@@ -5,6 +5,7 @@ import java.time.OffsetDateTime;
 
 public record IngresoVehiculoResponse(
         Long idIngreso,
+        String uuid,
         String placa,
         Long idTipoVehiculo,
         String tipoVehiculo,

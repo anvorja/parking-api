@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface IngresoVehiculoRepository extends JpaRepository<IngresoVehiculo, Long> {
 
@@ -83,4 +84,19 @@ public interface IngresoVehiculoRepository extends JpaRepository<IngresoVehiculo
         WHERE i.id = :id
     """)
     Optional<IngresoVehiculo> findByIdFetchAll(@Param("id") Long id);
+
+    /**
+     * Búsqueda por UUID público — endpoint QR del tiquete.
+     * El uuid es el identificador opaco que viaja en el QR; nunca expone
+     * el id secuencial interno de la BD.
+     */
+    @Query("""
+        SELECT i FROM IngresoVehiculo i
+        JOIN FETCH i.tipoVehiculo
+        JOIN FETCH i.ubicacion
+        JOIN FETCH i.estadoIngreso
+        JOIN FETCH i.usuarioRegistro
+        WHERE i.uuid = :uuid
+    """)
+    Optional<IngresoVehiculo> findByUuidFetchAll(@Param("uuid") UUID uuid);
 }

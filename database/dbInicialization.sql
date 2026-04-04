@@ -151,6 +151,7 @@ CREATE TABLE IF NOT EXISTS public.tarifa (
 
 CREATE TABLE IF NOT EXISTS public.ingreso_vehiculo (
     id_ingreso BIGSERIAL PRIMARY KEY,
+    uuid UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
     placa VARCHAR(10) NOT NULL,
     id_tipo_vehiculo BIGINT NOT NULL,
     id_ubicacion BIGINT NOT NULL,
