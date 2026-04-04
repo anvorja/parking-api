@@ -2,6 +2,7 @@ package com.coding.parkingmanagementservice.ingreso.controller;
 
 import com.coding.parkingmanagementservice.ingreso.dto.*;
 import com.coding.parkingmanagementservice.ingreso.service.IngresoVehiculoService;
+import java.util.UUID;
 import com.coding.parkingmanagementservice.usuario.dto.MensajeResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -149,6 +150,45 @@ public class IngresoVehiculoController {
             @PathVariable Long id
     ) {
         return ingresoVehiculoService.obtenerPorId(id);
+    }
+
+    @GetMapping("/qr/{uuid}")
+    @Operation(
+            summary = "Obtener ingreso por UUID del QR",
+            description = """
+                    Retorna el detalle de un ingreso a partir del UUID opaco que viaja en el código QR del tiquete.
+                    Este endpoint reemplaza al GET /{id} en el flujo de salida por QR, evitando exponer el ID
+                    secuencial interno de la base de datos.
+                    """
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Detalle del ingreso obtenido exitosamente.",
+                    content = @Content(schema = @Schema(implementation = IngresoVehiculoResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "El UUID proporcionado no tiene formato válido.",
+                    content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Access token ausente, inválido o expirado.",
+                    content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "No existe un ingreso con el UUID proporcionado.",
+                    content = @Content(schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))
+            )
+    })
+    public IngresoVehiculoResponse obtenerPorUuid(
+            @Parameter(description = "UUID público del ingreso (leído del QR del tiquete).",
+                       required = true, example = "550e8400-e29b-41d4-a716-446655440000")
+            @PathVariable UUID uuid
+    ) {
+        return ingresoVehiculoService.obtenerPorUuid(uuid);
     }
 
     @GetMapping("/activo")
